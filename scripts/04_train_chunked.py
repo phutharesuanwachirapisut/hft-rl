@@ -4,89 +4,91 @@ import glob
 import random
 import polars as pl
 import numpy as np
+import yaml # ⭐️ เพิ่ม import yaml
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
-
-# เพิ่ม Path ให้ Python รู้จักโฟลเดอร์ src
+from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor
+# เพิ่ม Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.simulator.market_env import BinanceMarketMakerEnv
 
 def load_chunk_to_numpy(parquet_path: str) -> np.ndarray:
-    """โหลดข้อมูล 1 Chunk เข้า RAM"""
     df = pl.read_parquet(parquet_path)
-    # feature_cols = ["price", "tfi", "volatility_60s", "vpin"] 
-    feature_cols = ["tfi", "volatility_60s", "vpin"] 
+    # ⭐️ เปลี่ยนมาใช้ TFI และ VPIN ที่มีอยู่แล้วใน Data
+    feature_cols = [
+        "price",           # คอลัมน์ 0 (เดี๋ยวโดนปิดตาใน Env)
+        "volume",          # คอลัมน์ 1
+        "volatility_60s",  # คอลัมน์ 2
+        "tfi",             # คอลัมน์ 3 (ใช้แทน OBI)
+        "vpin"             # คอลัมน์ 4 (เอาไว้ดูรายใหญ่เข้า)
+    ] 
     return df.select(feature_cols).to_numpy().astype(np.float32)
 
+def load_config(yaml_path: str) -> dict:
+    """ฟังก์ชันสำหรับโหลดค่าจาก YAML"""
+    with open(yaml_path, 'r') as file:
+        return yaml.safe_load(file)
+
 def main():
-    print("🚀 Starting Chunked Training Pipeline (Aggressive Mode)...")
+    print("🚀 Starting Chunked Training Pipeline...")
     
-    CHUNK_DIR = "/Users/zone/Documents/Project/RL/data/processed/chunks/"
+    CONFIG_PATH = "/Users/zone/Documents/Project/TradingBot/RL/configs/hyperparameters.yaml"
+    full_config = load_config(CONFIG_PATH)
+    env_config = full_config['env'] 
+    
+    CHUNK_DIR = "/Users/zone/Documents/Project/TradingBot/RL/data/processed/chunks/"
     chunk_files = glob.glob(os.path.join(CHUNK_DIR, "*.parquet"))
     
     if not chunk_files:
         raise FileNotFoundError(f"❌ ไม่พบไฟล์ Chunk ใน {CHUNK_DIR}")
-        
-    print(f"📁 Found {len(chunk_files)} chunks. Preparing curriculum...")
 
-    # ==========================================
-    # ⚙️ อัปเดต Hyperparameters (The Aggressive Tuning)
-    # ==========================================
-    config = {
-        "initial_balance": 30.0,
-        "max_inventory": 0.0004,
-        "order_size": 0.0001,
-        "eta": 10000.0,        # 📉 ลดลงมาจาก 200,000 ให้บอทกล้าถือของบ้าง
-        "min_spread": 2.0,
-        "max_spread": 60.0,    
-        "vol_multiplier": 20.0,
-        "max_skew_usd": 30.0   
-    }
+    MODEL_SAVE_PATH = "/Users/zone/Documents/Project/TradingBot/RL/models/ppo_hft_chunked"
+    save_dir = os.path.dirname(MODEL_SAVE_PATH)
+    os.makedirs(save_dir, exist_ok=True)
     
-    os.makedirs("/Users/zone/Documents/Project/RL/models", exist_ok=True)
-    MODEL_SAVE_PATH = "/Users/zone/Documents/Project/RL/models/ppo_hft_chunked"
-    
-    # 💥 เพิ่มเวลาเรียนรู้ให้ AI เพราะข้อสอบยากขึ้น
+    TENSORBOARD_LOG = "/Users/zone/Documents/Project/TradingBot/RL/logs/tensorboard/" # ⭐️ ที่เก็บกราฟ
     TOTAL_EPOCHS = 10 
-    
     model = None 
 
     for epoch in range(1, TOTAL_EPOCHS + 1):
-        print(f"\n{'='*40}")
-        print(f"🎓 เริ่มต้น EPOCH ที่ {epoch}/{TOTAL_EPOCHS}")
-        print(f"{'='*40}")
-        
-        random.shuffle(chunk_files)
+        print(f"\n================ EPOCH {epoch}/{TOTAL_EPOCHS} ================")
+        # สลับลำดับไฟล์นิดหน่อยในแต่ละ Epoch เพื่อป้องกัน AI จำแพทเทิร์น (Overfitting)
+        random.shuffle(chunk_files) 
         
         for chunk_idx, chunk_path in enumerate(chunk_files):
-            chunk_name = os.path.basename(chunk_path)
-            print(f"\n📥 [Epoch {epoch}] Loading Chunk {chunk_idx+1}/{len(chunk_files)}: {chunk_name}")
-            
             np_data = load_chunk_to_numpy(chunk_path)
-            env = DummyVecEnv([lambda: BinanceMarketMakerEnv(data=np_data, config=config)])
+            
+            # ⭐️ ห่อ Env ด้วย VecMonitor เพื่อให้มันช่วยเก็บสถิติ Reward ให้
+            raw_env = DummyVecEnv([lambda: BinanceMarketMakerEnv(data=np_data, config=env_config)])
+            env = VecMonitor(raw_env) 
             
             if model is None:
                 print("🧠 กำลังสร้าง PPO Agent ตัวใหม่...")
                 model = PPO(
                     "MlpPolicy", 
                     env, 
-                    learning_rate=0.00005, # 📉 เติม 0 ไปอีกตัว
-                    n_steps=4096,
+                    learning_rate=0.00003, 
+                    n_steps=1024,
                     batch_size=512,
-                    ent_coef=0.05,
-                    device="cpu", 
+                    ent_coef=0.01,
+                    tensorboard_log=TENSORBOARD_LOG, # ⭐️ เปิดใช้งาน TensorBoard
+                    device="mps", # ถ้า Mac มีชิป M ซีรีส์ ลองเปลี่ยนเป็น "mps" เพื่อเร่งความเร็วได้ครับ
                     verbose=1
                 )
             else:
-                print("🧠 อัปเดต Environment ใหม่ให้ Agent ตัวเดิม...")
+                print(f"🧠 อัปเดต Environment (Chunk {chunk_idx+1}/{len(chunk_files)}) ให้ Agent ตัวเดิม...")
                 model.set_env(env)
             
             steps_in_chunk = len(np_data)
-            print(f"🔥 Training on {steps_in_chunk} steps...")
             
+            # ⭐️ ข้อควรระวัง: steps_in_chunk ควรมีขนาดใหญ่กว่า n_steps (1024)
+            if steps_in_chunk < 1024:
+                print(f"⚠️ Warning: Chunk size ({steps_in_chunk}) is smaller than n_steps (1024). PPO might struggle to update.")
+                
+            print(f"🔥 Training on {steps_in_chunk} steps...")
             model.learn(total_timesteps=steps_in_chunk, reset_num_timesteps=False)
+            
+            # เซฟตลอดย่อยเผื่อไฟดับ
             model.save(f"{MODEL_SAVE_PATH}_latest")
-            print(f"💾 Saved Checkpoint: {MODEL_SAVE_PATH}_latest")
             
             del np_data
             del env

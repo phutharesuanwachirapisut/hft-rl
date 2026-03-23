@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import polars as pl
 import matplotlib.pyplot as plt
+import yaml  # ⭐️ อย่าลืม import yaml
 from stable_baselines3 import PPO
 import sys
 
@@ -14,20 +15,25 @@ def load_eval_data(parquet_path: str) -> np.ndarray:
     """โหลดข้อมูลและตัดมาเฉพาะ 20% สุดท้าย (Out-of-sample)"""
     print(f"📥 Loading Parquet: {os.path.basename(parquet_path)}")
     df = pl.read_parquet(parquet_path)
-    
-    # ⭐️ ต้องตรงกับคอลัมน์ใน 04_train_chunked.py เป๊ะๆ
-    # feature_cols = ["price", "tfi", "volatility_60s", "vpin"]
-    feature_cols = ["tfi", "volatility_60s", "vpin"] 
+    feature_cols = [
+        "price",           # คอลัมน์ 0 (เดี๋ยวโดนปิดตาใน Env)
+        "volume",          # คอลัมน์ 1
+        "volatility_60s",  # คอลัมน์ 2
+        "tfi",             # คอลัมน์ 3 (ใช้แทน OBI)
+        "vpin"             # คอลัมน์ 4 (เอาไว้ดูรายใหญ่เข้า)
+    ] 
     np_data = df.select(feature_cols).to_numpy().astype(np.float32)
-    
-    # หั่นเอาเฉพาะ 20% ท้าย (ข้อมูลที่บอทไม่เคยเห็นตอนเทรน)
     split_idx = int(len(np_data) * 0.8)
-    eval_data = np_data[split_idx:]
-    return eval_data
+    return np_data[split_idx:]
+
+# ⭐️ เพิ่มฟังก์ชันสำหรับอ่าน YAML (เหมือนสคริปต์ 04)
+def load_config(yaml_path: str) -> dict:
+    with open(yaml_path, 'r') as file:
+        return yaml.safe_load(file)
 
 def run_backtest_for_regime(regime: str, model, env_config: dict, device) -> dict:
-    """รัน Backtest สำหรับ 1 สภาวะตลาด และส่งคืนประวัติการเทรด"""
-    DATA_PATH = f"/Users/zone/Documents/Project/RL/data/processed/BTCUSDT_features_{regime}.parquet"
+    # ... (โค้ดข้างในฟังก์ชันนี้เหมือนเดิมทุกประการ) ...
+    DATA_PATH = f"/Users/zone/Documents/Project/TradingBot/RL/data/processed/BTCUSDT_features_{regime}.parquet"
     
     if not os.path.exists(DATA_PATH):
         print(f"⚠️ ข้าม {regime.upper()} - ไม่พบไฟล์ข้อมูล")
@@ -63,19 +69,13 @@ def run_backtest_for_regime(regime: str, model, env_config: dict, device) -> dic
     return history
 
 def main():
-    # Configuration สำหรับ Environment (ต้องเหมือนกับตอนเทรน)
-    env_config = {
-        "initial_balance": 30.0,
-        "max_inventory": 0.0004,
-        "order_size": 0.0001,
-        "eta": 200000.0,      # ปรับให้โหดขึ้นตามที่วิเคราะห์ไว้
-        "min_spread": 2.0,
-        "max_spread": 80.0,   # ถ่าง Spread ได้กว้างขึ้น
-        "vol_multiplier": 30.0,
-        "max_skew_usd": 50.0  # ดัมพ์ราคาได้แรงขึ้น
-    }
+    # ⭐️ 1. ดึง Config จาก YAML โดยตรง
+    CONFIG_PATH = "/Users/zone/Documents/Project/TradingBot/RL/configs/hyperparameters.yaml"
+    full_config = load_config(CONFIG_PATH)
+    env_config = full_config['env']
+    print(f"⚙️ Loaded Env Config from YAML: {env_config}")
 
-    MODEL_PATH = "/Users/zone/Documents/Project/RL/models/ppo_hft_chunked_final.zip"
+    MODEL_PATH = "/Users/zone/Documents/Project/TradingBot/RL/models/ppo_hft_chunked_final.zip"
     if not os.path.exists(MODEL_PATH):
         print(f"❌ Error: ไม่พบไฟล์โมเดลที่ {MODEL_PATH}")
         return
@@ -85,7 +85,7 @@ def main():
     model = PPO.load(MODEL_PATH, device=device)
 
     # ==========================================
-    # ⚙️ 1. รัน Backtest ทั้ง 3 สภาวะตลาด
+    # ⚙️ 2. รัน Backtest ทั้ง 3 สภาวะตลาด
     # ==========================================
     regimes = ["sideway", "trend", "toxic"]
     all_histories = {}
@@ -157,7 +157,7 @@ def main():
         ax3.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    save_path = '/Users/zone/Documents/Project/RL/notebooks/backtest_dashboard_all.png'
+    save_path = '/Users/zone/Documents/Project/TradingBot/RL/notebooks/backtest_dashboard_all.png'
     plt.savefig(save_path, dpi=300)
     print(f"🎉 Dashboard Saved Successfully at: {save_path}")
     plt.show()

@@ -57,9 +57,9 @@ if __name__ == "__main__":
         print(f"{'='*50}")
         
         # ⭐️ เปลี่ยนชื่อไฟล์เป้าหมายให้มีคำว่า sideway/trend/toxic ต่อท้าย (จะได้ไม่ทับกัน)
-        RAW_CSV_PATH = f"/Users/zone/Documents/Project/RL/data/raw/BTCUSDT_{regime}.csv"
-        TICK_PARQUET_PATH = f"/Users/zone/Documents/Project/RL/data/processed/BTCUSDT_tick_{regime}.parquet"
-        FEATURE_PARQUET_PATH = f"/Users/zone/Documents/Project/RL/data/processed/BTCUSDT_features_{regime}.parquet"
+        RAW_CSV_PATH = f"/Users/zone/Documents/Project/TradingBot/RL/data/raw/BTCUSDT_{regime}.csv"
+        TICK_PARQUET_PATH = f"/Users/zone/Documents/Project/TradingBot/RL/data/processed/BTCUSDT_tick_{regime}.parquet"
+        FEATURE_PARQUET_PATH = f"/Users/zone/Documents/Project/TradingBot/RL/data/processed/BTCUSDT_features_{regime}.parquet"
         
         # โยนเข้าเตาอบทีละไฟล์
         process_pipeline(

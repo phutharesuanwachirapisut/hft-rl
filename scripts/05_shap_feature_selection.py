@@ -11,7 +11,7 @@ def main():
     
     # 1. โหลดข้อมูลที่ผ่าน Pipeline มาแล้ว (สมมติว่าตอนนี้มีทั้ง VPIN, OBI, OFI ครบแล้ว)
     # ถ้าคุณเซฟแยกไฟล์กัน อย่าลืม Join ข้อมูลให้มาอยู่ในไฟล์เดียวก่อนนะครับ
-    DATA_PATH = "/Users/zone/Documents/Project/RL/data/processed/BTCUSDT_features.parquet"
+    DATA_PATH = "/Users/zone/Documents/Project/TradingBot/RL/data/processed/BTCUSDT_features.parquet"
     
     if not os.path.exists(DATA_PATH):
         print(f"⚠️ Warning: Could not find {DATA_PATH}.")
@@ -81,8 +81,8 @@ def main():
         show=False 
     )
     
-    os.makedirs("/Users/zone/Documents/Project/RL/notebooks", exist_ok=True)
-    plot_path = "/Users/zone/Documents/Project/RL/notebooks/shap_l2_importance.png"
+    os.makedirs("/Users/zone/Documents/Project/TradingBot/RL/notebooks", exist_ok=True)
+    plot_path = "/Users/zone/Documents/Project/TradingBot/RL/notebooks/shap_l2_importance.png"
     plt.tight_layout()
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     plt.show()

@@ -24,16 +24,13 @@ ppo:
 # 📈 Market Environment Configs
 # ==========================================
 env:
-  initial_balance: 30.0
+  initial_balance: 10000.0   # 💰 อัดฉีดเงินทุน! ให้บอทมีเบาะรองรับการแกว่งของราคา
   max_inventory: 0.0004
   order_size: 0.0001
-  maker_fee: 0.0000
-  
-  # 💥 ขยายเพดาน Spread (ให้มีพื้นที่วิ่งหนีตาย) 
-  # ถ้าตลาดยับ มันต้องถ่าง Spread ได้กว้างถึง 40 USD
-  max_spread: 40.0 
-  
-  # ⚖️ 💥 Inventory Penalty (\eta) โหมดซาดิสม์!
-  # ปรับเพิ่มจาก 6000 เป็น 50000 การถือของเต็มพอร์ต (0.0004) จะโดนหัก Reward ยับเยิน
-  # บังคับให้มันต้องรีบตั้ง Skew เทขายทิ้งให้ได้!
-  eta: 50000.0
+  maker_fee: -0.0005
+  eta: 100.0
+  min_spread: 5.0            # 🛡️ ถ่าง Spread ขั้นต่ำขึ้น เพื่อไม่ให้มันขายหมูง่ายเกินไป
+  max_spread: 30.0
+  vol_multiplier: 10.0
+  max_skew_usd: 30.0
+
