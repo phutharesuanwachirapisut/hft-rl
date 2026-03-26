@@ -102,38 +102,43 @@ class LiveFeatureEngine:
 # 🤖 2. Production Market Maker (Async Edition)
 # ==========================================
 class ProductionMarketMaker:
-    def __init__(self, model_path: str, config: dict):
+    # ⭐️ 1. รับ trading_config เข้ามาในวงเล็บด้วย
+    def __init__(self, model_path: str, hyper_config: dict, trading_config: dict):
         print("🚀 Initializing Async Production Market Maker...")
-        self.config = config['env']
+        self.hyper_config = hyper_config['env']
+        self.trading_config = trading_config # เก็บไว้ใช้งาน
+        
         self.model = PPO.load(model_path, device="cpu")
         self.feature_engine = LiveFeatureEngine()
         
-        # ⭐️ เอากลับมาแล้ว! ตัวแปรเก่าที่โดนทับไป
         self.inventory = 0.0
-        self.max_inventory = self.config.get("max_inventory", 0.0004)
-        self.order_size = self.config.get("order_size", 0.0001)
-        self.min_spread = self.config.get("min_spread", 5.0)
-        self.max_spread = self.config.get("max_spread", 30.0)
-        self.vol_multiplier = self.config.get("vol_multiplier", 10.0)
-        self.max_skew_usd = self.config.get("max_skew_usd", 30.0)
         
-        self.stack_size = self.config.get("frame_stack", 5)
+        # ⭐️ 2. โยงค่าจากไฟล์ trading_env.yaml มาใช้แทนการพิมพ์ตัวเลขตรงๆ!
+        self.symbol = self.trading_config['exchange']['symbol']    # ดึงมาจากหมวด exchange
+        
+        self.order_size = self.trading_config['risk']['order_size'] # ดึงมาจากหมวด risk
+        self.max_inventory = self.trading_config['risk']['max_inventory']
+        
+        self.min_spread = self.trading_config['strategy']['min_spread'] # ดึงมาจากหมวด strategy
+        self.max_spread = self.trading_config['strategy']['max_spread']
+        self.vol_multiplier = self.trading_config['strategy']['vol_multiplier']
+        self.max_skew_usd = self.trading_config['strategy']['max_skew_usd']
+        self.order_update_threshold = self.trading_config['strategy']['order_update_threshold']
+        
+        self.stack_size = self.trading_config['features']['frame_stack']
         self.frames = deque(maxlen=self.stack_size)
         
-        # ⭐️ ส่วนของการเชื่อมต่อ CCXT
-        self.symbol = 'BTC/USDT:USDT' # สัญลักษณ์สำหรับ Futures
-        
+        # ⭐️ 3. ตั้งค่า CCXT เหมือนเดิม
         self.exchange = ccxt.binance({
             'apiKey': os.getenv('BINANCE_DEMO_API_KEY'),       
             'secret': os.getenv('BINANCE_DEMO_SECRET_KEY'),    
             'enableRateLimit': True,
             'options': {
-                'defaultType': 'future', 
+                'defaultType': self.trading_config['exchange']['market_type'], # ดึง future มาจาก yaml
             }
         })
         self.exchange.enable_demo_trading(True)
         
-        # ⭐️ 2. ตัวแปรจำสถานะออเดอร์ปัจจุบัน (กันการ Spam API)
         self.current_open_bid = 0.0
         self.current_open_ask = 0.0
         self.order_update_threshold = 2.0 # ถ้าราคาขยับไม่ถึง 2 USD จะยังไม่แก้ตั๋ว (ประหยัด Rate Limit)

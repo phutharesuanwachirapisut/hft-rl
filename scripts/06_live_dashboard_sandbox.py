@@ -160,12 +160,24 @@ async def dashboard_trading_loop(bot: ProductionMarketMaker):
         print("\n🛑 AI Trading Loop Stopped.")
 
 async def main():
+    # 1. ชี้เป้าไปที่ไฟล์ Config ทั้ง 2 อัน
     CONFIG_PATH = PROJECT_ROOT / "configs" / "hyperparameters.yaml"
+    TRADING_ENV_PATH = PROJECT_ROOT / "configs" / "trading_env.yaml" # ⭐️ เพิ่มบรรทัดนี้
     MODEL_PATH = PROJECT_ROOT / "models" / "ppo_hft_chunked_final.zip"
-    config = load_config(CONFIG_PATH)
-    bot = ProductionMarketMaker(MODEL_PATH, config)
-
+    
+    if not os.path.exists(MODEL_PATH):
+        print(f"❌ ไม่พบไฟล์โมเดลที่: {MODEL_PATH}")
+        sys.exit(1)
+        
+    # 2. โหลดไฟล์ YAML ทั้งคู่เข้ามาเป็น Dictionary
+    hyper_config = load_config(str(CONFIG_PATH))
+    trading_config = load_config(str(TRADING_ENV_PATH)) # ⭐️ เพิ่มบรรทัดนี้
+    
+    # 3. ส่ง Config ทั้ง 2 ตัวเข้าไปให้สมองบอท
+    bot = ProductionMarketMaker(str(MODEL_PATH), hyper_config, trading_config) # ⭐️ เพิ่ม trading_config ตรงนี้
+    
     server_config = uvicorn.Config(app, host="127.0.0.1", port=8123, log_level="warning")
+
     server = uvicorn.Server(server_config)
 
     try:
