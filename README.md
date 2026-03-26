@@ -1,8 +1,4 @@
-นี่คือไฟล์ **README.md** สำหรับโปรเจกต์ของคุณที่ได้รับการออกแบบให้ดูเป็นมืออาชีพ มีความชัดเจนในเชิงเทคนิค และครอบคลุมขั้นตอนการใช้งานทั้งหมดตามที่คุณต้องการครับ
-
----
-
-# HFT Quant Elite: RL-Driven Market Maker v3.2
+# ⛳️ HFT Quant Elite: RL-Driven Market Maker v3.2
 
 ระบบเทรดความถี่สูง (High-Frequency Trading) ที่ขับเคลื่อนด้วยการเรียนรู้เชิงเสริมกำลัง (**Reinforcement Learning - PPO**) และโมเดล **Avellaneda-Stoikov** ออกแบบมาเพื่อทำกำไรจาก Spread ในตลาด Binance Futures โดยเฉพาะ
 
@@ -40,7 +36,7 @@
 
 ---
 
-## How to Run
+## 🚩 How to Run
 
 เริ่มต้นใช้งานผ่านระบบ Pipeline หลักด้วยคำสั่งเดียว:
 
