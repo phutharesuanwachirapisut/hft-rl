@@ -1,0 +1,23 @@
+# --- Core Quant & Data Processing ---
+numpy>=1.24.0      #
+polars>=0.19.0     # (ใช้จัดการ L2 Data แทน Pandas)
+pyyaml>=6.0.1      # (โหลดไฟล์ config .yaml)
+python-dotenv>=1.0.0 # (จัดการ .env API Keys)
+numba>=0.58.0      # สำหรับเร่งความเร็ว Simulator (JIT)
+
+# --- Machine Learning & RL ---
+torch>=2.0.0       # (Deep Learning Engine รองรับ MPS บน Mac M3)
+stable-baselines3[extra]>=2.1.0 # (PPO Agent)
+gymnasium>=0.28.1  # มาตรฐาน Environment สำหรับ RL
+
+# --- Connectivity & API ---
+ccxt>=4.1.0        # (เชื่อมต่อ Binance Futures API)
+websockets>=11.0   # (ดึงข้อมูล Live Feed/Orderbook)
+aiohttp>=3.8.0     # รองรับการทำงานแบบ Async ของ CCXT
+
+# --- Dashboard & Web Server ---
+fastapi>=0.100.0   # (Backend API สำหรับ Dashboard)
+uvicorn>=0.23.0    # (ASGI Server สำหรับรัน FastAPI)
+
+# --- Visualization & Analysis ---
+matplotlib>=3.7.0  # (วาดกราฟ Backtest Results)
